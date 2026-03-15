@@ -1,0 +1,30 @@
+[
+  {
+    "id": "morning",
+    "name_ar": "أذكار الصباح",
+    "name_en": "Morning Athkar",
+    "icon": "wb_sunny",
+    "sort_order": 1
+  },
+  {
+    "id": "evening",
+    "name_ar": "أذكار المساء",
+    "name_en": "Evening Athkar",
+    "icon": "nights_stay",
+    "sort_order": 2
+  },
+  {
+    "id": "sleep",
+    "name_ar": "أذكار النوم والاستيقاظ",
+    "name_en": "Sleep and Wakeup Athkar",
+    "icon": "bedtime",
+    "sort_order": 3
+  },
+  {
+    "id": "post_prayer",
+    "name_ar": "أذكار بعد الصلاة",
+    "name_en": "Post-Prayer Athkar",
+    "icon": "mosque",
+    "sort_order": 4
+  }
+]
