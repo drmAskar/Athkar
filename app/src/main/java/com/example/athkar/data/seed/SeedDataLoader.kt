@@ -31,7 +31,7 @@ class SeedDataLoader(private val context: Context, private val database: AthkarD
         val categories = categoriesData.map {
             CategoryEntity(
                 id = it.id,
-                nameAr = it.nameAr,
+                nameAr = it.nameAr.ifEmpty { it.id },
                 nameEn = it.nameEn,
                 icon = it.icon,
                 sortOrder = it.sortOrder
@@ -81,7 +81,7 @@ class SeedDataLoader(private val context: Context, private val database: AthkarD
         val surahs = surahsData.map {
             SurahEntity(
                 id = it.id,
-                nameAr = it.nameAr,
+                nameAr = it.nameAr.ifEmpty { it.id },
                 nameEn = it.nameEn,
                 surahNumber = it.surahNumber,
                 ayatCount = it.ayatCount,
@@ -109,9 +109,12 @@ class SeedDataLoader(private val context: Context, private val database: AthkarD
     // Data classes for JSON parsing
     private data class CategoryEntityData(
         val id: String,
+        @com.google.gson.annotations.SerializedName("name_ar")
         val nameAr: String,
+        @com.google.gson.annotations.SerializedName("name_en")
         val nameEn: String?,
         val icon: String?,
+        @com.google.gson.annotations.SerializedName("sort_order")
         val sortOrder: Int
     )
     
