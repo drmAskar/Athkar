@@ -42,15 +42,15 @@ class SeedDataLoader(private val context: Context, private val database: AthkarD
     
     private suspend fun seedAthkar() {
         val categoryFiles = listOf(
-            "athkar_morning.json" to "morning",
-            "athkar_evening.json" to "evening",
-            "athkar_sleep.json" to "sleep",
-            "athkar_post_prayer.json" to "post_prayer"
+            "athkar_morning.json",
+            "athkar_evening.json",
+            "athkar_sleep.json",
+            "athkar_post_prayer.json"
         )
         
         val allAthkar = mutableListOf<AthkarEntity>()
         
-        for ((file, _) in categoryFiles) {
+        for (file in categoryFiles) {
             val json = loadJson(file)
             val listType = object : TypeToken<List<AthkarEntityData>>() {}.type
             val athkarData: List<AthkarEntityData> = gson.fromJson(json, listType)
@@ -96,12 +96,9 @@ class SeedDataLoader(private val context: Context, private val database: AthkarD
     }
     
     private suspend fun seedReminders() {
-        val defaultReminders = listOf(
-            ReminderEntity("morning", "morning", "05:00", true, null),
-            ReminderEntity("evening", "evening", "17:00", true, null),
-            ReminderEntity("sleep", "sleep", "22:00", true, null)
-        )
-        defaultReminders.forEach { database.reminderDao().upsert(it) }
+        database.reminderDao().upsert(ReminderEntity("morning", "morning", "05:00", true, null))
+        database.reminderDao().upsert(ReminderEntity("evening", "evening", "17:00", true, null))
+        database.reminderDao().upsert(ReminderEntity("sleep", "sleep", "22:00", true, null))
     }
     
     private fun loadJson(fileName: String): String {

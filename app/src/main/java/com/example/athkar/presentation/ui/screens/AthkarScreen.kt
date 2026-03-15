@@ -3,8 +3,6 @@ package com.example.athkar.presentation.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +11,8 @@ import androidx.compose.ui.unit.dp
 import com.example.athkar.data.local.entities.AthkarEntity
 import com.example.athkar.data.local.entities.CategoryEntity
 import com.example.athkar.presentation.ui.components.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun AthkarScreen(

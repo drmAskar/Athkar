@@ -3,204 +3,146 @@ package com.example.athkar.presentation.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.athkar.data.local.database.AthkarDatabase
 import com.example.athkar.data.local.entities.*
-import com.example.athkar.data.repository.AthkarRepository
+import com.example.athkar.data.repository.*
+import com.example.athkar.data.seed.SeedDataLoader
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-data class HomeUiState(
-    val lastReadCategory: CategoryEntity? = null,
-    val lastReadItem: AthkarEntity? = null,
-    val morningProgress: Float = 0f,
-    val eveningProgress: Float = 0f,
-    val totalDhikrCount: Int = 0
-)
-
-data class AthkarUiState(
-    val categories: List<CategoryEntity> = emptyList(),
-    val selectedCategory: CategoryEntity? = null,
-    val athkarList: List<AthkarEntity> = emptyList(),
-    val currentAthkar: AthkarEntity? = null,
-    val currentCount: Int = 0
-)
-
-data class SurahsUiState(
-    val surahs: List<SurahEntity> = emptyList(),
-    val selectedSurah: SurahEntity? = null
-)
-
-data class FavoritesUiState(
-    val favoriteAthkar: List<AthkarEntity> = emptyList(),
-    val favoriteSurahs: List<SurahEntity> = emptyList()
-)
-
-data class SettingsUiState(
-    val reminders: List<ReminderEntity> = emptyList(),
-    val morningReminderEnabled: Boolean = false,
-    val eveningReminderEnabled: Boolean = false,
-    val sleepReminderEnabled: Boolean = false
-)
-
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AthkarRepository(application)
     
-    // Home state
-    private val _homeState = MutableStateFlow(HomeUiState())
-    val homeState: StateFlow<HomeUiState> = _homeState.asStateFlow()
+    private val database = AthkarDatabase.getDatabase(application)
     
-    // Athkar state
-    private val _athkarState = MutableStateFlow(AthkarUiState())
-    val athkarState: StateFlow<AthkarUiState> = _athkarState.asStateFlow()
+    private val categoryRepository = CategoryRepository(database.categoryDao())
+    private val athkarRepository = AthkarRepository(database.athkarDao())
+    private val surahRepository = SurahRepository(database.surahDao())
+    private val favoriteRepository = FavoriteRepository(database.favoriteDao())
+    private val userPreferenceRepository = UserPreferenceRepository(database.userPreferenceDao())
+    private val reminderRepository = ReminderRepository(database.reminderDao())
     
-    // Surahs state
-    private val _surahsState = MutableStateFlow(SurahsUiState())
-    val surahsState: StateFlow<SurahsUiState> = _surahsState.asStateFlow()
+    // UI State
+    private val _selectedCategory = MutableStateFlow<String?>(null)
+    val selectedCategory: StateFlow<String?> = _selectedCategory
     
-    // Favorites state
-    private val _favoritesState = MutableStateFlow(FavoritesUiState())
-    val favoritesState: StateFlow<FavoritesUiState> = _favoritesState.asStateFlow()
+    private val _currentCounter = MutableStateFlow(0)
+    val currentCounter: StateFlow<Int> = _currentCounter
     
-    // Settings state
-    private val _settingsState = MutableStateFlow(SettingsUiState())
-    val settingsState: StateFlow<SettingsUiState> = _settingsState.asStateFlow()
+    // Data flows
+    val categories: StateFlow<List<CategoryEntity>> = categoryRepository.getAllCategories()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
-    init {
-        viewModelScope.launch {
-            repository.seedDataIfNeeded()
-            loadCategories()
-            loadSurahs()
-            loadReminders()
-            loadLastRead()
-            loadFavorites()
-        }
+    val surahs: StateFlow<List<SurahEntity>> = surahRepository.getAllSurahs()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    
+    val allFavorites: StateFlow<List<FavoriteEntity>> = favoriteRepository.getAllFavorites()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    
+    val reminders: StateFlow<List<ReminderEntity>> = reminderRepository.getAllReminders()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    
+    val lastReadCategory: StateFlow<String?> = userPreferenceRepository
+        .getValueFlow(UserPreferenceRepository.KEY_LAST_READ_CATEGORY)
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+    
+    val lastReadItem: StateFlow<String?> = userPreferenceRepository
+        .getValueFlow(UserPreferenceRepository.KEY_LAST_READ_ITEM)
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+    
+    fun getAthkarByCategory(categoryId: String): StateFlow<List<AthkarEntity>> {
+        return athkarRepository.getAthkarByCategory(categoryId)
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
     
-    private suspend fun loadCategories() {
-        repository.getCategories().collectLatest { categories ->
-            _athkarState.update { it.copy(categories = categories) }
-            if (categories.isNotEmpty() && _athkarState.value.selectedCategory == null) {
-                selectCategory(categories.first())
+    fun isFavorite(itemType: String, itemId: String): Flow<Boolean> {
+        return favoriteRepository.isFavorite(itemType, itemId)
+    }
+    
+    fun getFavoriteAthkar(): StateFlow<List<AthkarEntity>> {
+        return favoriteRepository.getFavoriteIdsByType("athkar")
+            .map { ids ->
+                ids.mapNotNull { id -> database.athkarDao().getAthkarById(id) }
             }
-        }
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
     
-    private suspend fun loadSurahs() {
-        repository.getAllSurahs().collectLatest { surahs ->
-            _surahsState.update { it.copy(surahs = surahs) }
-        }
-    }
-    
-    private suspend fun loadReminders() {
-        repository.getAllReminders().collectLatest { reminders ->
-            _settingsState.update { state ->
-                state.copy(
-                    reminders = reminders,
-                    morningReminderEnabled = reminders.find { it.type == "morning" }?.enabled ?: false,
-                    eveningReminderEnabled = reminders.find { it.type == "evening" }?.enabled ?: false,
-                    sleepReminderEnabled = reminders.find { it.type == "sleep" }?.enabled ?: false
-                )
+    fun getFavoriteSurahs(): StateFlow<List<SurahEntity>> {
+        return favoriteRepository.getFavoriteIdsByType("surah")
+            .map { ids ->
+                ids.mapNotNull { id -> database.surahDao().getSurahById(id) }
             }
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }
+    
+    fun selectCategory(categoryId: String?) {
+        _selectedCategory.value = categoryId
+        categoryId?.let {
+            saveLastRead(it)
         }
     }
     
-    private suspend fun loadLastRead() {
-        repository.getLastRead().collectLatest { lastRead ->
-            if (lastRead != null && lastRead.categoryId != null) {
-                val category = repository.getCategories().first()
-                    .find { it.id == lastRead.categoryId }
-                val item = lastRead.itemId?.let { repository.getAthkarById(it) }
-                _homeState.update { it.copy(lastReadCategory = category, lastReadItem = item) }
-            }
-        }
+    fun incrementCounter() {
+        _currentCounter.value++
     }
     
-    private suspend fun loadFavorites() {
-        repository.getAllFavorites().collectLatest { favorites ->
-            val athkarIds = favorites.filter { it.itemType == "athkar" }.map { it.itemId }
-            val surahIds = favorites.filter { it.itemType == "surah" }.map { it.itemId }
-            
-            val allAthkar = repository.getAllAthkar().first()
-            val allSurahs = repository.getAllSurahs().first()
-            
-            _favoritesState.update {
-                it.copy(
-                    favoriteAthkar = allAthkar.filter { athkar -> athkar.id in athkarIds },
-                    favoriteSurahs = allSurahs.filter { surah -> surah.id in surahIds }
-                )
-            }
-        }
+    fun decrementCounter() {
+        _currentCounter.value--
     }
     
-    fun selectCategory(category: CategoryEntity) {
-        _athkarState.update { it.copy(selectedCategory = category, currentCount = 0) }
-        viewModelScope.launch {
-            repository.getAthkarByCategory(category.id).collectLatest { athkarList ->
-                _athkarState.update { it.copy(athkarList = athkarList) }
-            }
-        }
+    fun resetCounter() {
+        _currentCounter.value = 0
     }
     
-    fun selectAthkar(athkar: AthkarEntity) {
-        _athkarState.update { it.copy(currentAthkar = athkar, currentCount = 0) }
-        viewModelScope.launch {
-            repository.updateLastRead(
-                categoryId = _athkarState.value.selectedCategory?.id,
-                itemId = athkar.id,
-                itemType = "athkar"
-            )
-        }
-    }
-    
-    fun incrementCount() {
-        val current = _athkarState.value.currentCount
-        val maxCount = _athkarState.value.currentAthkar?.count ?: 1
-        if (current < maxCount) {
-            _athkarState.update { it.copy(currentCount = current + 1) }
-            if (current + 1 >= maxCount) {
-                viewModelScope.launch {
-                    _athkarState.value.selectedCategory?.id?.let { repository.incrementProgress(it) }
-                }
-            }
-        }
-    }
-    
-    fun resetCount() {
-        _athkarState.update { it.copy(currentCount = 0) }
-    }
-    
-    fun selectSurah(surah: SurahEntity) {
-        _surahsState.update { it.copy(selectedSurah = surah) }
+    fun completeAthkar(athkar: AthkarEntity) {
+        _currentCounter.value = 0
     }
     
     fun toggleFavorite(itemType: String, itemId: String) {
         viewModelScope.launch {
-            val isFav = repository.isFavorite(itemType, itemId).first()
+            val isFav = favoriteRepository.isFavorite(itemType, itemId).first()
             if (isFav) {
-                repository.removeFromFavorites(itemType, itemId)
+                favoriteRepository.removeFavorite(itemType, itemId)
             } else {
-                repository.addToFavorites(itemType, itemId)
+                favoriteRepository.addFavorite(itemType, itemId)
             }
         }
     }
     
-    fun isItemFavorite(itemType: String, itemId: String): Flow<Boolean> =
-        repository.isFavorite(itemType, itemId)
-    
-    fun toggleReminder(type: String, enabled: Boolean) {
+    fun saveLastRead(categoryId: String, itemId: String? = null) {
         viewModelScope.launch {
-            val reminder = _settingsState.value.reminders.find { it.type == type }
-            if (reminder != null) {
-                repository.updateReminder(reminder.copy(enabled = enabled))
+            userPreferenceRepository.setValue(
+                UserPreferenceRepository.KEY_LAST_READ_CATEGORY,
+                categoryId
+            )
+            userPreferenceRepository.setValue(
+                UserPreferenceRepository.KEY_LAST_READ_TIMESTAMP,
+                System.currentTimeMillis().toString()
+            )
+            itemId?.let {
+                userPreferenceRepository.setValue(
+                    UserPreferenceRepository.KEY_LAST_READ_ITEM,
+                    it
+                )
             }
         }
     }
     
-    fun updateReminderTime(type: String, time: String) {
+    fun updateReminderEnabled(id: String, enabled: Boolean) {
         viewModelScope.launch {
-            val reminder = _settingsState.value.reminders.find { it.type == type }
-            if (reminder != null) {
-                repository.updateReminder(reminder.copy(time = time))
-            }
+            reminderRepository.setEnabled(id, enabled)
+        }
+    }
+    
+    fun updateReminderTime(id: String, time: String) {
+        viewModelScope.launch {
+            reminderRepository.setTime(id, time)
+        }
+    }
+    
+    fun seedData() {
+        viewModelScope.launch {
+            val seedLoader = SeedDataLoader(getApplication(), database)
+            seedLoader.seedAllIfNeeded()
         }
     }
 }
