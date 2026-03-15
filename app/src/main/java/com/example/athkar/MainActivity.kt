@@ -24,7 +24,8 @@ import com.example.athkar.presentation.ui.screens.*
 import com.example.athkar.presentation.ui.theme.AthkarTheme
 import com.example.athkar.presentation.viewmodel.MainViewModel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,7 +41,7 @@ class MainActivity : ComponentActivity() {
 sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Home : Screen("home", "الرئيسية", Icons.Default.Home)
     object Athkar : Screen("athkar", "الأذكار", Icons.Default.MenuBook)
-    object Surahs : Screen("surahs", "السور", Icons.Default.Book)
+    object Surahs : Screen("surahs", "سور", Icons.Default.Book)
     object Favorites : Screen("favorites", "المفضلة", Icons.Default.Favorite)
     object Settings : Screen("settings", "الإعدادات", Icons.Default.Settings)
 }
@@ -110,11 +111,12 @@ fun AthkarApp() {
             composable(Screen.Athkar.route) {
                 val categories by viewModel.categories.collectAsState()
                 val selectedCategory by viewModel.selectedCategory.collectAsState()
-                val athkarStateFlow = remember(selectedCategory) {
+                
+                val athkarStateFlow: StateFlow<List<AthkarEntity>> = remember(selectedCategory) {
                     if (selectedCategory != null) {
                         viewModel.getAthkarByCategory(selectedCategory!!)
                     } else {
-                        flowOf(emptyList())
+                        MutableStateFlow(emptyList())
                     }
                 }
                 
