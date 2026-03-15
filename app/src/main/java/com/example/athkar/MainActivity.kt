@@ -24,8 +24,6 @@ import com.example.athkar.presentation.ui.screens.*
 import com.example.athkar.presentation.ui.theme.AthkarTheme
 import com.example.athkar.presentation.viewmodel.MainViewModel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,7 +36,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class Screen(val route: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+sealed class Screen(
+    val route: String,
+    val title: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
     object Home : Screen("home", "الرئيسية", Icons.Default.Home)
     object Athkar : Screen("athkar", "الأذكار", Icons.Default.MenuBook)
     object Surahs : Screen("surahs", "سور", Icons.Default.Book)
@@ -51,15 +53,15 @@ sealed class Screen(val route: String, val title: String, val icon: androidx.com
 fun AthkarApp() {
     val navController: NavHostController = rememberNavController()
     val viewModel: MainViewModel = viewModel()
-    
+
     // Seed data on first launch
     LaunchedEffect(Unit) {
         viewModel.seedData()
     }
-    
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
+
     val screens = listOf(
         Screen.Home,
         Screen.Athkar,
@@ -67,7 +69,7 @@ fun AthkarApp() {
         Screen.Favorites,
         Screen.Settings
     )
-    
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -98,70 +100,78 @@ fun AthkarApp() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Home.route) {
+                val homeState by viewModel.homeState.collectAsState()
+                val categories by viewModel.categories.collectAsState()
+
                 HomeScreen(
-                    categories = viewModel.categories.collectAsState().value,
-                    lastReadCategory = viewModel.lastReadCategory.collectAsState().value,
+                    categories = categories,
+                    lastReadCategory = homeState.lastReadCategory?.id,
                     onCategoryClick = { categoryId ->
                         viewModel.selectCategory(categoryId)
                         navController.navigate(Screen.Athkar.route)
                     }
                 )
             }
-            
+
             composable(Screen.Athkar.route) {
-                val categories by viewModel.categories.collectAsState()
-                val selectedCategory by viewModel.selectedCategory.collectAsState()
-                
-                val athkarStateFlow: StateFlow<List<AthkarEntity>> = remember(selectedCategory) {
-                    if (selectedCategory != null) {
-                        viewModel.getAthkarByCategory(selectedCategory!!)
-                    } else {
-                        MutableStateFlow(emptyList())
-                    }
-                }
-                
+                val athkarState by viewModel.athkarState.collectAsState()
+
                 AthkarScreen(
-                    categories = categories,
-                    selectedCategory = selectedCategory,
+                    categories = athkarState.categories,
+                    selectedCategory = athkarState.selectedCategory,
                     onCategorySelected = { viewModel.selectCategory(it) },
-                    athkarByCategory = athkarStateFlow,
-                    currentCounter = viewModel.currentCounter.value,
-                    onIncrement = { viewModel.incrementCounter() },
-                    onDecrement = { viewModel.decrementCounter() },
-                    onReset = { viewModel.resetCounter() },
-                    isFavorite = { id -> viewModel.isFavorite("athkar", id) },
-                    onFavoriteToggle = { id -> viewModel.toggleFavorite("athkar", id) },
-                    onAthkarComplete = { athkar -> viewModel.completeAthkar(athkar) }
+                    athkarList = athkarState.athkarList,
+                    currentAthkar = athkarState.currentAthkar,
+                    currentCount = athkarState.currentCount,
+                    onAthkarSelected = { viewModel.selectAthkar(it) },
+                    onIncrement = { viewModel.incrementCount() },
+                    onReset = { viewModel.resetCount() },
+                    isFavorite = { id ->
+                        viewModel.isFavorite("athkar", id).collectAsState(initial = false).value
+                    },
+                    onFavoriteToggle = { viewModel.toggleFavorite("athkar", it) }
                 )
             }
-            
+
             composable(Screen.Surahs.route) {
+                val surahsState by viewModel.surahsState.collectAsState()
+
                 SurahsScreen(
-                    surahs = viewModel.surahs.collectAsState().value,
-                    isFavorite = { id -> viewModel.isFavorite("surah", id) },
-                    onFavoriteToggle = { id -> viewModel.toggleFavorite("surah", id) }
+                    surahs = surahsState.surahs,
+                    isFavorite = { id ->
+                        viewModel.isFavorite("surah", id).collectAsState(initial = false)
+                    },
+                    onFavoriteToggle = { viewModel.toggleFavorite("surah", it) }
                 )
             }
-            
+
             composable(Screen.Favorites.route) {
+                val favoritesState by viewModel.favoritesState.collectAsState()
+
                 FavoritesScreen(
-                    favorites = viewModel.allFavorites.collectAsState().value,
-                    favoriteAthkar = emptyList(),
-                    favoriteSurahs = emptyList(),
+                    favorites = emptyList(),
+                    favoriteAthkar = favoritesState.favoriteAthkar,
+                    favoriteSurahs = favoritesState.favoriteSurahs,
                     isFavorite = { type, id -> viewModel.isFavorite(type, id) },
                     onFavoriteToggle = { type, id -> viewModel.toggleFavorite(type, id) },
-                    currentCounter = viewModel.currentCounter.value,
-                    onIncrement = { viewModel.incrementCounter() },
-                    onDecrement = { viewModel.decrementCounter() },
-                    onReset = { viewModel.resetCounter() }
+                    currentCounter = viewModel.currentCounter.collectAsState().value,
+                    onIncrement = { viewModel.incrementCount() },
+                    onDecrement = { viewModel.incrementCount() },
+                    onReset = { viewModel.resetCount() }
                 )
             }
-            
+
             composable(Screen.Settings.route) {
+                val settingsState by viewModel.settingsState.collectAsState()
+
                 SettingsScreen(
-                    reminders = viewModel.reminders.collectAsState().value,
-                    onReminderToggle = { id, enabled -> viewModel.updateReminderEnabled(id, enabled) },
-                    onReminderTimeChange = { id, time -> viewModel.updateReminderTime(id, time) }
+                    reminders = settingsState.reminders,
+                    onReminderToggle = { id, enabled ->
+                        viewModel.updateReminderEnabled(id, enabled)
+                    },
+                    onReminderTimeChange = { id, time ->
+                        viewModel.updateReminderTime(id, time)
+                    }
                 )
             }
         }
