@@ -102,7 +102,6 @@ fun AthkarApp() {
             composable(Screen.Home.route) {
                 val homeState by viewModel.homeState.collectAsState()
                 val categories by viewModel.categories.collectAsState()
-
                 HomeScreen(
                     categories = categories,
                     lastReadCategory = homeState.lastReadCategory?.id,
@@ -115,7 +114,6 @@ fun AthkarApp() {
 
             composable(Screen.Athkar.route) {
                 val athkarState by viewModel.athkarState.collectAsState()
-
                 AthkarScreen(
                     categories = athkarState.categories,
                     selectedCategory = athkarState.selectedCategory,
@@ -126,28 +124,22 @@ fun AthkarApp() {
                     onAthkarSelected = { viewModel.selectAthkar(it) },
                     onIncrement = { viewModel.incrementCount() },
                     onReset = { viewModel.resetCount() },
-                    isFavorite = { id ->
-                        viewModel.isFavorite("athkar", id).collectAsState(initial = false).value
-                    },
+                    isFavorite = { id -> viewModel.isFavorite("athkar", id) },
                     onFavoriteToggle = { viewModel.toggleFavorite("athkar", it) }
                 )
             }
 
             composable(Screen.Surahs.route) {
                 val surahsState by viewModel.surahsState.collectAsState()
-
                 SurahsScreen(
                     surahs = surahsState.surahs,
-                    isFavorite = { id ->
-                        viewModel.isFavorite("surah", id).collectAsState(initial = false)
-                    },
+                    isFavorite = { id -> viewModel.isFavorite("surah", id) },
                     onFavoriteToggle = { viewModel.toggleFavorite("surah", it) }
                 )
             }
 
             composable(Screen.Favorites.route) {
                 val favoritesState by viewModel.favoritesState.collectAsState()
-
                 FavoritesScreen(
                     favorites = emptyList(),
                     favoriteAthkar = favoritesState.favoriteAthkar,
@@ -163,7 +155,6 @@ fun AthkarApp() {
 
             composable(Screen.Settings.route) {
                 val settingsState by viewModel.settingsState.collectAsState()
-
                 SettingsScreen(
                     reminders = settingsState.reminders,
                     onReminderToggle = { id, enabled ->

@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.example.athkar.data.local.entities.AthkarEntity
 import com.example.athkar.data.local.entities.CategoryEntity
 import com.example.athkar.presentation.ui.components.*
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 fun AthkarScreen(
@@ -25,7 +26,7 @@ fun AthkarScreen(
     onAthkarSelected: (AthkarEntity) -> Unit,
     onIncrement: () -> Unit,
     onReset: () -> Unit,
-    isFavorite: (id: String) -> Boolean,
+    isFavorite: (id: String) -> Flow<Boolean>,
     onFavoriteToggle: (id: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -53,9 +54,10 @@ fun AthkarScreen(
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
                 items(athkarList, key = { it.id }) { athkar ->
+                    val isFav by isFavorite(athkar.id).collectAsState(initial = false)
                     AthkarItem(
                         athkar = athkar,
-                        isFavorite = isFavorite(athkar.id),
+                        isFavorite = isFav,
                         onFavoriteToggle = { onFavoriteToggle(athkar.id) },
                         onCountComplete = { onAthkarSelected(athkar) },
                         currentCount = if (currentAthkar?.id == athkar.id) currentCount else 0,
