@@ -19,28 +19,20 @@ class AthkarRepository(private val context: Context) {
     fun getCategories(): Flow<List<CategoryEntity>> = database.categoryDao().getAllCategories()
 
     // Athkar
-    fun getAthkarByCategory(categoryId: String): Flow<List<AthkarEntity>> =
-        database.athkarDao().getAthkarByCategory(categoryId)
-
+    fun getAthkarByCategory(categoryId: String): Flow<List<AthkarEntity>> = database.athkarDao().getAthkarByCategory(categoryId)
     fun getAllAthkar(): Flow<List<AthkarEntity>> = database.athkarDao().getAllAthkar()
-
     suspend fun getAthkarById(id: String): AthkarEntity? = database.athkarDao().getAthkarById(id)
 
     // Surahs
     fun getAllSurahs(): Flow<List<SurahEntity>> = database.surahDao().getAllSurahs()
-
     suspend fun getSurahById(id: String): SurahEntity? = database.surahDao().getSurahById(id)
 
     // Favorites
     fun getAllFavorites(): Flow<List<FavoriteEntity>> = database.favoriteDao().getAllFavorites()
-
-    fun isFavorite(itemType: String, itemId: String): Flow<Boolean> =
-        database.favoriteDao().isFavorite(itemType, itemId)
-
+    fun isFavorite(itemType: String, itemId: String): Flow<Boolean> = database.favoriteDao().isFavorite(itemType, itemId)
     suspend fun addToFavorites(itemType: String, itemId: String) {
         database.favoriteDao().insert(FavoriteEntity(itemType = itemType, itemId = itemId))
     }
-
     suspend fun removeFromFavorites(itemType: String, itemId: String) {
         database.favoriteDao().delete(itemType, itemId)
     }
@@ -69,16 +61,13 @@ class AthkarRepository(private val context: Context) {
 
     // Reminders
     fun getAllReminders(): Flow<List<ReminderEntity>> = database.reminderDao().getAllReminders()
-
     fun getEnabledReminders(): Flow<List<ReminderEntity>> = database.reminderDao().getEnabledReminders()
-
     suspend fun updateReminder(reminder: ReminderEntity) {
         database.reminderDao().update(reminder)
     }
 
     // Last Read
     fun getLastRead(): Flow<LastReadEntity?> = database.lastReadDao().getLastRead()
-
     suspend fun updateLastRead(
         categoryId: String?,
         itemId: String?,
@@ -120,21 +109,34 @@ class AthkarRepository(private val context: Context) {
         }
         database.categoryDao().insertAll(categories)
 
-        // Seed athkar
+        // Seed athkar with @SerializedName mapping
         val categoryFiles = listOf(
             "data/athkar_morning.json",
             "data/athkar_evening.json",
             "data/athkar_sleep.json",
             "data/athkar_post_prayer.json"
         )
-
         for (file in categoryFiles) {
             val athkarJson = loadJsonFromAsset(file)
-            val athkarList: List<AthkarEntity> = gson.fromJson(athkarJson, object : TypeToken<List<AthkarEntity>>() {}.type)
+            val athkarDataType = object : TypeToken<List<AthkarJsonData>>() {}.type
+            val athkarData: List<AthkarJsonData> = gson.fromJson(athkarJson, athkarDataType)
+            val athkarList = athkarData.map {
+                AthkarEntity(
+                    id = it.id,
+                    categoryId = it.categoryId,
+                    titleAr = it.titleAr,
+                    textAr = it.textAr,
+                    count = it.count,
+                    source = it.source,
+                    sourceReference = it.sourceReference,
+                    virtues = it.virtues,
+                    sortOrder = it.sortOrder
+                )
+            }
             database.athkarDao().insertAll(athkarList)
         }
 
-        // Seed surahs
+        // Seed surahs with @SerializedName mapping
         val surahsJson = loadJsonFromAsset("data/surahs.json")
         val surahsDataType = object : TypeToken<List<SurahJsonData>>() {}.type
         val surahsData: List<SurahJsonData> = gson.fromJson(surahsJson, surahsDataType)
@@ -179,16 +181,41 @@ class AthkarRepository(private val context: Context) {
         val sortOrder: Int
     )
 
+    private data class AthkarJsonData(
+        val id: String,
+        @SerializedName("category_id")
+        val categoryId: String,
+        @SerializedName("title_ar")
+        val titleAr: String,
+        @SerializedName("text_ar")
+        val textAr: String,
+        val count: Int,
+        val source: String?,
+        @SerializedName("source_reference")
+        val sourceReference: String?,
+        val virtues: String?,
+        @SerializedName("sort_order")
+        val sortOrder: Int
+    )
+
     private data class SurahJsonData(
         val id: String,
+        @SerializedName("name_ar")
         val nameAr: String,
+        @SerializedName("name_en")
         val nameEn: String?,
+        @SerializedName("surah_number")
         val surahNumber: Int?,
+        @SerializedName("ayat_count")
         val ayatCount: Int?,
+        @SerializedName("revelation_type")
         val revelationType: String?,
+        @SerializedName("juz_number")
         val juzNumber: Int?,
+        @SerializedName("text_ar")
         val textAr: String,
         val virtues: String?,
+        @SerializedName("source_reference")
         val sourceReference: String?
     )
 }
