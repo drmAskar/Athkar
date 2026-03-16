@@ -183,7 +183,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _athkarState.update { it.copy(currentCount = current + 1) }
             if (current + 1 >= maxCount) {
                 viewModelScope.launch {
-                    _athkarState.value.selectedCategory?.id?.let { repository.incrementProgress(it) }
+                    _athkarState.value.selectedCategory?.id?.let {
+                        repository.incrementProgress(it)
+                    }
                 }
             }
         }
@@ -220,7 +222,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateReminderTime(type: String, time: String) {
+    fun updateReminderTimeByType(type: String, time: String) {
         viewModelScope.launch {
             val reminder = _settingsState.value.reminders.find { it.type == type }
             if (reminder != null) {
@@ -267,16 +269,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateReminderEnabled(id: String, enabled: Boolean) {
         val reminder = _settingsState.value.reminders.find { it.id == id }
-        reminder?.let {
-            toggleReminder(it.type, enabled)
-        }
+        reminder?.let { toggleReminder(it.type, enabled) }
     }
 
     fun updateReminderTime(id: String, time: String) {
         val reminder = _settingsState.value.reminders.find { it.id == id }
-        reminder?.let {
-            updateReminderTime(it.type, time)
-        }
+        reminder?.let { updateReminderTimeByType(it.type, time) }
     }
 
     fun seedData() {

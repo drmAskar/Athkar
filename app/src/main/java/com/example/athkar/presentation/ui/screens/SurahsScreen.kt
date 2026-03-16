@@ -32,12 +32,11 @@ fun SurahsScreen(
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             items(surahs, key = { it.id }) { surah ->
-                val isFav by isFavorite("surah_${surah.id}").collectAsState(initial = false)
-                
+                val isFav by isFavorite(surah.id).collectAsState(initial = false)
                 SurahItem(
                     surah = surah,
                     isFavorite = isFav,
-                    onFavoriteToggle = { onFavoriteToggle("surah_${surah.id}") }
+                    onFavoriteToggle = { onFavoriteToggle(surah.id) }
                 )
             }
         }
