@@ -12,13 +12,45 @@ android {
         applicationId = "com.example.athkar"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // Version code from CI environment or fallback to 1
+        // GITHUB_RUN_NUMBER provides monotonically increasing builds
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1)
+        versionName = "1.0.${System.getenv("GITHUB_RUN_NUMBER") ?: "1"}"
+    }
+
+    // Disable ABI splits for universal APK (single APK for all devices)
+    splits {
+        abi {
+            isEnable = false
+        }
+        density {
+            isEnable = false
+        }
+    }
+
+    // Ensure single universal APK output
+    bundle {
+        language {
+            // Disable language split for universal APK
+            enableSplit = false
+        }
+        density {
+            // Disable density split for universal APK
+            enableSplit = false
+        }
+        abi {
+            // Disable ABI split for universal APK
+            enableSplit = false
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+        }
+        debug {
+            // Debug builds are installable from scratch
+            isDebuggable = true
         }
     }
     compileOptions {

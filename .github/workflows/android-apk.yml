@@ -13,6 +13,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v5
 
@@ -25,11 +26,74 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
+      - name: Build Debug APK (Native Android)
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Find APK path
+        id: find-apk
+        run: |
+          APK_PATH=$(find app/build/outputs/apk -name "*.apk" -type f | head -1)
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "apk_name=$(basename $APK_PATH)" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK_PATH"
+
+      - name: Generate INSTALL.txt
+        run: |
+          mkdir -p artifact-package
+          cp "${{ steps.find-apk.outputs.apk_path }}" artifact-package/athkar-installable.apk
+          cat > artifact-package/INSTALL.txt << 'EOF'
+          ================================================================================
+          Athkar Android App - Installation Instructions
+          ================================================================================
+
+          EXACT INSTALL STEPS:
+          --------------------
+          1. Unzip this archive to a folder on your computer
+          2. Transfer athkar-installable.apk to your Android device
+          3. On your device, open the APK file to install
+
+          INSTALLATION REQUIREMENTS:
+          --------------------------
+          - Android 7.0 (API 24) or higher
+          - "Install from unknown sources" must be enabled in device settings
+          - If a previous version exists, uninstall it first for clean install
+
+          TROUBLESHOOTING:
+          ----------------
+          If installation fails, try these steps:
+
+          | Error Message                    | Cause & Solution                              |
+          |----------------------------------|-----------------------------------------------|
+          | INSTALL_FAILED_ALREADY_EXISTS    | Uninstall existing app first                  |
+          | INSTALL_FAILED_UPDATE_INCOMPATIBLE | Uninstall old version, then install new    |
+          | INSTALL_FAILED_INVALID_APK       | Re-download the APK; file may be corrupted   |
+          | INSTALL_FAILED_INSUFFICIENT_STORAGE | Free up device storage space               |
+          | INSTALL_FAILED_VERSION_DOWNGRADE | Uninstall existing app first                  |
+          | INSTALL_PARSE_FAILED_NO_CERTIFICATES | Re-download APK; signing issue            |
+          | "App not installed" (generic)    | Enable "Install from unknown sources"         |
+          | "Nicht installiert" (German)      | Same as above - enable unknown sources        |
+          | INSTALL_FAILED_BLOCKED_BY_POLICY | Check device admin/MDM restrictions          |
+
+          UNINSTALL COMMAND (if needed):
+          ------------------------------
+          adb uninstall com.example.athkar
+
+          VERIFY INSTALLATION:
+          --------------------
+          adb shell pm list packages | grep athkar
+
+          ================================================================================
+          Build: ${{ github.run_number }}
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+          ================================================================================
+          EOF
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: athkar-installable-apk
+          path: |
+            artifact-package/athkar-installable.apk
+            artifact-package/INSTALL.txt
+          if-no-files-found: error
