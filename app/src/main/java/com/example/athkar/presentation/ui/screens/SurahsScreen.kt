@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.example.athkar.data.local.entities.SurahEntity
 import com.example.athkar.presentation.ui.components.SurahItem
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.delay
 
 @Composable
 fun SurahsScreen(
@@ -19,25 +20,62 @@ fun SurahsScreen(
     onFavoriteToggle: (id: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (surahs.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
+    var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
+
+    LaunchedEffect(surahs) {
+        if (surahs.isNotEmpty()) {
+            isLoading = false
+        } else {
+            // Wait for data to load, timeout after 5 seconds
+            delay(5000)
+            if (surahs.isEmpty()) {
+                isLoading = false
+                hasError = true
+            }
         }
-    } else {
-        LazyColumn(
-            modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            items(surahs, key = { it.id }) { surah ->
-                val isFav by isFavorite(surah.id).collectAsState(initial = false)
-                SurahItem(
-                    surah = surah,
-                    isFavorite = isFav,
-                    onFavoriteToggle = { onFavoriteToggle(surah.id) }
-                )
+    }
+
+    when {
+        isLoading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        hasError -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "لم يتم تحميل السور",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        text = "حاول إعادة فتح التطبيق",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+        }
+        else -> {
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(surahs, key = { it.id }) { surah ->
+                    val isFav by isFavorite(surah.id).collectAsState(initial = false)
+                    SurahItem(
+                        surah = surah,
+                        isFavorite = isFav,
+                        onFavoriteToggle = { onFavoriteToggle(surah.id) }
+                    )
+                }
             }
         }
     }

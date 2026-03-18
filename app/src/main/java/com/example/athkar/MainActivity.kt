@@ -140,15 +140,16 @@ fun AthkarApp() {
 
             composable(Screen.Favorites.route) {
                 val favoritesState by viewModel.favoritesState.collectAsState()
+                val allFavorites by viewModel.allFavorites.collectAsState()
                 FavoritesScreen(
-                    favorites = emptyList(),
+                    favorites = allFavorites,
                     favoriteAthkar = favoritesState.favoriteAthkar,
                     favoriteSurahs = favoritesState.favoriteSurahs,
                     isFavorite = { type, id -> viewModel.isFavorite(type, id) },
                     onFavoriteToggle = { type, id -> viewModel.toggleFavorite(type, id) },
                     currentCounter = viewModel.currentCounter.collectAsState().value,
                     onIncrement = { viewModel.incrementCount() },
-                    onDecrement = { viewModel.incrementCount() },
+                    onDecrement = { viewModel.decrementCounter() },
                     onReset = { viewModel.resetCount() }
                 )
             }

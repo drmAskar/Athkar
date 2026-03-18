@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.athkar.data.local.entities.ReminderEntity
+import kotlinx.coroutines.delay
 
 @Composable
 fun SettingsScreen(
@@ -24,14 +25,17 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    
+
+    var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
+
     // Notification permission launcher
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         // Handle permission result
     }
-    
+
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permission = android.Manifest.permission.POST_NOTIFICATIONS
@@ -40,7 +44,19 @@ fun SettingsScreen(
             }
         }
     }
-    
+
+    LaunchedEffect(reminders) {
+        if (reminders.isNotEmpty()) {
+            isLoading = false
+        } else {
+            delay(5000)
+            if (reminders.isEmpty()) {
+                isLoading = false
+                hasError = true
+            }
+        }
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
@@ -52,17 +68,51 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
         }
-        
-        items(reminders, key = { it.id }) { reminder ->
-            ReminderSettingsItem(
-                reminder = reminder,
-                onEnabledChange = { enabled ->
-                    onReminderToggle(reminder.id, enabled)
-                },
-                onTimeChange = { time ->
-                    onReminderTimeChange(reminder.id, time)
+
+        when {
+            isLoading -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            )
+            }
+            hasError -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "لم يتم تحميل التنبيهات",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Text(
+                                text = "حاول إعادة فتح التطبيق",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                }
+            }
+            else -> {
+                items(reminders, key = { it.id }) { reminder ->
+                    ReminderSettingsItem(
+                        reminder = reminder,
+                        onEnabledChange = { enabled -> onReminderToggle(reminder.id, enabled) },
+                        onTimeChange = { time -> onReminderTimeChange(reminder.id, time) }
+                    )
+                }
+            }
         }
     }
 }
@@ -74,14 +124,14 @@ fun ReminderSettingsItem(
     onTimeChange: (String) -> Unit
 ) {
     var showTimePicker by remember { mutableStateOf(false) }
-    
+
     val reminderName = when (reminder.type) {
         "morning" -> "تنبيه أذكار الصباح"
         "evening" -> "تنبيه أذكار المساء"
         "sleep" -> "تنبيه أذكار النوم"
         else -> reminder.type
     }
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -108,13 +158,11 @@ fun ReminderSettingsItem(
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
-                
                 Switch(
                     checked = reminder.enabled,
                     onCheckedChange = onEnabledChange
                 )
             }
-            
             if (reminder.enabled) {
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(onClick = { showTimePicker = true }) {
@@ -123,6 +171,5 @@ fun ReminderSettingsItem(
             }
         }
     }
-    
     // Time picker dialog would go here
 }

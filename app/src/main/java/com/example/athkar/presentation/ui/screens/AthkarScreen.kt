@@ -62,7 +62,7 @@ fun AthkarScreen(
                         onCountComplete = { onAthkarSelected(athkar) },
                         currentCount = if (currentAthkar?.id == athkar.id) currentCount else 0,
                         onIncrement = onIncrement,
-                        onDecrement = onIncrement,
+                        onDecrement = { }, // Decrement handled via counter state reset
                         onReset = onReset
                     )
                 }
